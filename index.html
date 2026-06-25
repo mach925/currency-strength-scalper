@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Currency Strength Scalper</title>
+    <title>Currency Strength Scalper - 4H + Scalping</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header>
             <h1>💱 Currency Strength Scalper</h1>
-            <p>リアルタイム通貨強度インジケーター（スキャルピング向け）</p>
+            <p>4時間足環境 + 1分/5分足スキャルピング</p>
         </header>
 
         <div class="controls">
@@ -22,26 +22,37 @@
             </div>
         </div>
 
+        <!-- 4時間足環境セクション -->
+        <div class="environment-section">
+            <h2>🌍 4時間足 環境判定（参考情報）</h2>
+            <div id="environmentContainer" class="environment-container">
+                <p class="no-data">環境分析中...</p>
+            </div>
+        </div>
+
+        <!-- シグナル設定 -->
         <div class="indicators">
             <div class="info-box">
-                <h3>設定条件</h3>
+                <h3>スキャルピング設定（1分/5分足）</h3>
                 <ul>
-                    <li>最小乖離: <strong>8ポイント以上</strong></li>
-                    <li>縮小速度: <strong>1.5ポイント/tick以上</strong></li>
-                    <li>更新間隔: <strong>リアルタイム</strong></li>
+                    <li>最小乖離: <strong id="configDivergence">3ポイント以上</strong></li>
+                    <li>縮小速度: <strong id="configSpeed">0.5ポイント/tick以上</strong></li>
+                    <li>更新間隔: <strong>1秒</strong></li>
                 </ul>
             </div>
         </div>
 
+        <!-- スキャルピングシグナル -->
         <div class="results">
-            <h2>📊 シグナル結果（最新順）</h2>
+            <h2>📊 スキャルピングシグナル（最新順）</h2>
             <div id="signalContainer" class="signal-container">
                 <p class="no-signal">シグナル待機中...</p>
             </div>
         </div>
 
+        <!-- チャート -->
         <div class="chart-area">
-            <h2>📈 通貨強度チャート</h2>
+            <h2>📈 通貨強度チャート（1分/5分足ベース）</h2>
             <div id="chart" class="chart"></div>
         </div>
     </div>
