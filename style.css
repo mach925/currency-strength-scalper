@@ -1,0 +1,301 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    text-align: center;
+}
+
+header h1 {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+
+header p {
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 30px;
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.btn {
+    padding: 12px 30px;
+    font-size: 1em;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.btn-start {
+    background: #28a745;
+    color: white;
+}
+
+.btn-start:hover:not(:disabled) {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+}
+
+.btn-stop {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-stop:hover:not(:disabled) {
+    background: #c82333;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.status {
+    display: flex;
+    gap: 20px;
+    font-size: 0.95em;
+}
+
+#statusText {
+    padding: 8px 15px;
+    background: #e7f3ff;
+    border-left: 4px solid #2196F3;
+    border-radius: 4px;
+    font-weight: bold;
+    color: #2196F3;
+}
+
+#lastUpdate {
+    padding: 8px 15px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.indicators {
+    padding: 20px 30px;
+    background: #fff;
+}
+
+.info-box {
+    background: #f0f7ff;
+    padding: 15px 20px;
+    border-left: 4px solid #667eea;
+    border-radius: 8px;
+}
+
+.info-box h3 {
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.info-box ul {
+    list-style: none;
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.info-box li {
+    font-size: 0.95em;
+}
+
+.results {
+    padding: 30px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.results h2 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+}
+
+.signal-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.signal-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #fff;
+    border: 2px solid #e9ecef;
+    border-left: 5px solid;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.signal-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.signal-card.bullish {
+    border-left-color: #28a745;
+    background: #f0fff4;
+}
+
+.signal-card.bearish {
+    border-left-color: #dc3545;
+    background: #fff5f5;
+}
+
+.signal-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.signal-pair {
+    font-size: 1.3em;
+    font-weight: bold;
+    color: #333;
+}
+
+.signal-pair.bullish {
+    color: #28a745;
+}
+
+.signal-pair.bearish {
+    color: #dc3545;
+}
+
+.signal-details {
+    display: flex;
+    gap: 20px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.signal-arrow {
+    font-size: 1.5em;
+    margin: 0 10px;
+}
+
+.signal-arrow.up {
+    color: #28a745;
+}
+
+.signal-arrow.down {
+    color: #dc3545;
+}
+
+.signal-speed {
+    font-weight: bold;
+    padding: 8px 12px;
+    background: #ffd700;
+    border-radius: 5px;
+    color: #333;
+}
+
+.signal-speed.high {
+    background: #ff6b6b;
+    color: white;
+}
+
+.signal-speed.medium {
+    background: #ffa500;
+    color: white;
+}
+
+.signal-speed.low {
+    background: #90ee90;
+    color: #333;
+}
+
+.no-signal {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    font-size: 1.1em;
+}
+
+.chart-area {
+    padding: 30px;
+    background: #f8f9fa;
+}
+
+.chart-area h2 {
+    color: #333;
+    margin-bottom: 20px;
+}
+
+#chart {
+    position: relative;
+    height: 400px;
+}
+
+/* スマホ対応 */
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 1.8em;
+    }
+
+    .controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn {
+        width: 100%;
+    }
+
+    .status {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .signal-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .signal-details {
+        flex-direction: column;
+    }
+
+    .info-box ul {
+        flex-direction: column;
+        gap: 10px;
+    }
+}

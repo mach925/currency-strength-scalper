@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Currency Strength Scalper</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💱 Currency Strength Scalper</h1>
+            <p>リアルタイム通貨強度インジケーター（スキャルピング向け）</p>
+        </header>
+
+        <div class="controls">
+            <button id="startBtn" class="btn btn-start">▶️ 開始</button>
+            <button id="stopBtn" class="btn btn-stop" disabled>⏹️ 停止</button>
+            <div class="status">
+                <span id="statusText">準備中...</span>
+                <span id="lastUpdate">最終更新: --:--:--</span>
+            </div>
+        </div>
+
+        <div class="indicators">
+            <div class="info-box">
+                <h3>設定条件</h3>
+                <ul>
+                    <li>最小乖離: <strong>8ポイント以上</strong></li>
+                    <li>縮小速度: <strong>1.5ポイント/tick以上</strong></li>
+                    <li>更新間隔: <strong>リアルタイム</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="results">
+            <h2>📊 シグナル結果（最新順）</h2>
+            <div id="signalContainer" class="signal-container">
+                <p class="no-signal">シグナル待機中...</p>
+            </div>
+        </div>
+
+        <div class="chart-area">
+            <h2>📈 通貨強度チャート</h2>
+            <div id="chart" class="chart"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
