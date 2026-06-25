@@ -1,27 +1,36 @@
-// Currency Strength Scalper - Main Logic (Improved)
+// Currency Strength Scalper - 4H Environment + Scalping
 // Configuration
 const CONFIG = {
-    MIN_DIVERGENCE: 3,      // Minimum 3 points divergence (lowered for better sensitivity)
-    MIN_SPEED: 0.5,         // Minimum 0.5 points/tick reduction speed (lowered)
-    API_INTERVAL: 2000,     // Update every 2 seconds (faster)
-    HISTORY_SIZE: 30,       // Keep last 30 data points
-    VOLATILITY_FACTOR: 1.5, // Increase volatility for better signal generation
+    // Scalping (1min/5min) settings
+    MIN_DIVERGENCE_SCALP: 3,    // Minimum 3 points divergence for scalp signals
+    MIN_SPEED_SCALP: 0.5,       // Minimum 0.5 points/tick reduction speed
+    SCALP_UPDATE_INTERVAL: 1000, // Update every 1 second for scalping
+
+    // 4H Environment settings
+    MIN_DIVERGENCE_4H: 5,       // Minimum 5 points for 4H environment
+    ENV_UPDATE_INTERVAL: 30000, // Update every 30 seconds for 4H
+
+    HISTORY_SIZE: 30,
+    VOLATILITY_FACTOR: 1.5,
 };
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'NZD', 'CAD'];
 
 // Global state
 let isRunning = false;
-let currencyStrengths = {};
-let strengthHistory = {};
+let scalpStrengths = {};      // 1min/5min strengths
+let scalpHistory = {};        // 1min/5min history
+let envStrengths = {};        // 4H strengths
 let signals = [];
 let chart = null;
 let updateCounter = 0;
+let envUpdateCounter = 0;
 
-// Initialize strength history
+// Initialize
 CURRENCIES.forEach(curr => {
-    currencyStrengths[curr] = 0;
-    strengthHistory[curr] = [];
+    scalpStrengths[curr] = 0;
+    scalpHistory[curr] = [];
+    envStrengths[curr] = 0;
 });
 
 // UI Elements
@@ -30,21 +39,21 @@ const stopBtn = document.getElementById('stopBtn');
 const statusText = document.getElementById('statusText');
 const lastUpdate = document.getElementById('lastUpdate');
 const signalContainer = document.getElementById('signalContainer');
+const environmentContainer = document.getElementById('environmentContainer');
 
 // Event Listeners
 startBtn.addEventListener('click', start);
 stopBtn.addEventListener('click', stop);
 
-// Enhanced mock data generator with realistic volatility
-function generateMockPrices() {
+// Generate mock prices with realistic volatility
+function generateMockPrices(volatilityFactor = CONFIG.VOLATILITY_FACTOR) {
     const prices = {};
     
     CURRENCIES.forEach(curr1 => {
         CURRENCIES.forEach(curr2 => {
             if (curr1 !== curr2) {
                 const pair = curr1 + curr2;
-                // Increased volatility for better signal generation
-                const volatility = (Math.random() - 0.5) * CONFIG.VOLATILITY_FACTOR;
+                const volatility = (Math.random() - 0.5) * volatilityFactor;
                 prices[pair] = 100 + volatility;
             }
         });
@@ -53,7 +62,7 @@ function generateMockPrices() {
     return prices;
 }
 
-// Improved currency strength calculation
+// Calculate currency strength
 function calculateStrengths(prices) {
     const strengths = {};
     
@@ -66,12 +75,9 @@ function calculateStrengths(prices) {
                 const pair1 = curr + other;
                 const pair2 = other + curr;
                 
-                // Use the pair that exists in prices
                 const price = prices[pair1] || prices[pair2];
                 
                 if (price !== undefined) {
-                    // If curr is first in pair, price > 100 means strong
-                    // If curr is second in pair, price < 100 means strong
                     const isStrong = prices[pair1] ? (price > 100) : (price < 100);
                     totalScore += isStrong ? 1 : -1;
                     count++;
@@ -79,40 +85,43 @@ function calculateStrengths(prices) {
             }
         });
         
-        // Scale to -15 to +15 range for visualization
         strengths[curr] = count > 0 ? (totalScore / count) * 10 : 0;
     });
     
     return strengths;
 }
 
-// Improved signal detection
-function detectSignals(newStrengths) {
+// Detect scalping signals (filtered by 4H environment)
+function detectScalpingSignals(newScalpStrengths) {
     const detectedSignals = [];
     
     CURRENCIES.forEach(curr1 => {
         CURRENCIES.forEach(curr2 => {
             if (curr1 < curr2) {
-                const divergence = Math.abs(newStrengths[curr1] - newStrengths[curr2]);
+                const divergence = Math.abs(newScalpStrengths[curr1] - newScalpStrengths[curr2]);
                 
-                // Check if divergence meets minimum threshold
-                if (divergence >= CONFIG.MIN_DIVERGENCE) {
+                if (divergence >= CONFIG.MIN_DIVERGENCE_SCALP) {
                     let prevDivergence = 0;
                     
-                    // Get previous divergence from history
-                    if (strengthHistory[curr1].length > 0 && strengthHistory[curr2].length > 0) {
-                        const prevStr1 = strengthHistory[curr1][strengthHistory[curr1].length - 1];
-                        const prevStr2 = strengthHistory[curr2][strengthHistory[curr2].length - 1];
+                    if (scalpHistory[curr1].length > 0 && scalpHistory[curr2].length > 0) {
+                        const prevStr1 = scalpHistory[curr1][scalpHistory[curr1].length - 1];
+                        const prevStr2 = scalpHistory[curr2][scalpHistory[curr2].length - 1];
                         prevDivergence = Math.abs(prevStr1 - prevStr2);
                     }
                     
-                    // Check if divergence is contracting (mean reversion signal)
                     if (prevDivergence > divergence) {
                         const speed = prevDivergence - divergence;
                         
-                        if (speed >= CONFIG.MIN_SPEED) {
-                            const stronger = newStrengths[curr1] > newStrengths[curr2] ? curr1 : curr2;
+                        if (speed >= CONFIG.MIN_SPEED_SCALP) {
+                            const stronger = newScalpStrengths[curr1] > newScalpStrengths[curr2] ? curr1 : curr2;
                             const weaker = stronger === curr1 ? curr2 : curr1;
+                            
+                            // Check if signal aligns with 4H environment
+                            const env4hStrong = envStrengths[stronger];
+                            const env4hWeak = envStrengths[weaker];
+                            
+                            // Only show signals that align with 4H trend (bonus filtering)
+                            const alignmentBonus = (env4hStrong > env4hWeak) ? 1.2 : 0.8;
                             
                             detectedSignals.push({
                                 timestamp: new Date(),
@@ -120,7 +129,8 @@ function detectSignals(newStrengths) {
                                 weaker: weaker,
                                 divergence: divergence.toFixed(2),
                                 speed: speed.toFixed(3),
-                                direction: newStrengths[stronger] > newStrengths[weaker] ? 'bullish' : 'bearish'
+                                direction: newScalpStrengths[stronger] > newScalpStrengths[weaker] ? 'bullish' : 'bearish',
+                                alignment: alignmentBonus > 1 ? '✅' : '⚠️'
                             });
                         }
                     }
@@ -132,15 +142,34 @@ function detectSignals(newStrengths) {
     return detectedSignals;
 }
 
-// Update display with real-time info
-function updateDisplay() {
+// Update 4H environment display
+function updateEnvironmentDisplay() {
+    const sorted = CURRENCIES.map(curr => ({
+        curr: curr,
+        strength: envStrengths[curr]
+    })).sort((a, b) => b.strength - a.strength);
+    
+    environmentContainer.innerHTML = sorted.map(item => {
+        const className = item.strength > 0 ? 'strong' : 'weak';
+        const arrow = item.strength > 0 ? '📈' : '📉';
+        return `
+            <div class="environment-item ${className}">
+                <div class="environment-currency">${item.curr}</div>
+                <div class="environment-strength">${arrow} ${Math.abs(item.strength).toFixed(1)}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Update scalping signals display
+function updateScalpingDisplay() {
     const now = new Date();
     lastUpdate.textContent = `最終更新: ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
     
     if (signals.length === 0) {
-        signalContainer.innerHTML = '<p class="no-signal">シグナル監視中... (更新回数: ' + updateCounter + ')</p>';
+        signalContainer.innerHTML = '<p class="no-signal">スキャルピングシグナル待機中... (更新: ' + updateCounter + ')</p>';
     } else {
-        signalContainer.innerHTML = signals.map((signal, index) => `
+        signalContainer.innerHTML = signals.map((signal) => `
             <div class="signal-card ${signal.direction}">
                 <div class="signal-info">
                     <div class="signal-pair ${signal.direction}">
@@ -148,6 +177,7 @@ function updateDisplay() {
                         <span class="signal-arrow ${signal.direction === 'bullish' ? 'up' : 'down'}">
                             ${signal.direction === 'bullish' ? '📈 ↑' : '📉 ↓'}
                         </span>
+                        <span>${signal.alignment}</span>
                     </div>
                     <div class="signal-details">
                         <span>乖離: ${signal.divergence}pt</span>
@@ -161,10 +191,7 @@ function updateDisplay() {
         `).join('');
     }
     
-    // Update config display
-    document.getElementById('configDivergence').textContent = CONFIG.MIN_DIVERGENCE + 'ポイント以上';
-    document.getElementById('configSpeed').textContent = CONFIG.MIN_SPEED + 'ポイント/tick以上';
-    
+    updateConfigDisplay();
     updateChart();
 }
 
@@ -174,20 +201,27 @@ function getSpeedLevel(speed) {
     return 'low';
 }
 
+function updateConfigDisplay() {
+    document.getElementById('configDivergence').textContent = CONFIG.MIN_DIVERGENCE_SCALP + 'ポイント以上';
+    document.getElementById('configSpeed').textContent = CONFIG.MIN_SPEED_SCALP + 'ポイント/tick以上';
+}
+
 // Update Chart
 function updateChart() {
     const ctx = document.getElementById('chart');
     if (!ctx) return;
     
-    const labels = strengthHistory[CURRENCIES[0]].map((_, i) => i + 1);
+    if (scalpHistory[CURRENCIES[0]].length === 0) return;
+    
+    const labels = scalpHistory[CURRENCIES[0]].map((_, i) => i + 1);
     const datasets = CURRENCIES.map((curr) => ({
         label: curr,
-        data: strengthHistory[curr],
+        data: scalpHistory[curr],
         borderColor: getColorForCurrency(curr),
         backgroundColor: `${getColorForCurrency(curr)}20`,
         tension: 0.3,
         fill: false,
-        pointRadius: 3,
+        pointRadius: 2,
         pointBackgroundColor: getColorForCurrency(curr),
         borderWidth: 2
     }));
@@ -205,17 +239,11 @@ function updateChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: {
-                duration: 0
-            },
+            animation: { duration: 0 },
             plugins: {
                 legend: {
                     position: 'top',
-                    labels: {
-                        font: { size: 12 },
-                        padding: 15,
-                        usePointStyle: true
-                    }
+                    labels: { font: { size: 12 }, padding: 15, usePointStyle: true }
                 }
             },
             scales: {
@@ -223,14 +251,10 @@ function updateChart() {
                     beginAtZero: true,
                     min: -15,
                     max: 15,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
+                    grid: { color: 'rgba(0, 0, 0, 0.05)' }
                 },
                 x: {
-                    grid: {
-                        display: false
-                    }
+                    grid: { display: false }
                 }
             }
         }
@@ -239,49 +263,53 @@ function updateChart() {
 
 function getColorForCurrency(curr) {
     const colors = {
-        'USD': '#8B7355',
-        'EUR': '#FF0000',
-        'GBP': '#00AA00',
-        'JPY': '#00CCFF',
-        'CHF': '#9370DB',
-        'AUD': '#0066FF',
-        'NZD': '#FF69B4',
-        'CAD': '#663399'
+        'USD': '#8B7355', 'EUR': '#FF0000', 'GBP': '#00AA00', 'JPY': '#00CCFF',
+        'CHF': '#9370DB', 'AUD': '#0066FF', 'NZD': '#FF69B4', 'CAD': '#663399'
     };
     return colors[curr] || '#000000';
 }
 
-// Main update loop
-async function updateData() {
+// Update scalping data (fast update)
+function updateScalpingData() {
     try {
         updateCounter++;
         
-        // Generate prices with better volatility
-        const prices = generateMockPrices();
+        const prices = generateMockPrices(CONFIG.VOLATILITY_FACTOR);
+        const newScalpStrengths = calculateStrengths(prices);
+        scalpStrengths = newScalpStrengths;
         
-        // Calculate new strengths
-        const newStrengths = calculateStrengths(prices);
-        currencyStrengths = newStrengths;
-        
-        // Update history
         CURRENCIES.forEach(curr => {
-            strengthHistory[curr].push(newStrengths[curr]);
-            if (strengthHistory[curr].length > CONFIG.HISTORY_SIZE) {
-                strengthHistory[curr].shift();
+            scalpHistory[curr].push(newScalpStrengths[curr]);
+            if (scalpHistory[curr].length > CONFIG.HISTORY_SIZE) {
+                scalpHistory[curr].shift();
             }
         });
         
-        // Detect signals
-        const newSignals = detectSignals(newStrengths);
+        const newSignals = detectScalpingSignals(newScalpStrengths);
         if (newSignals.length > 0) {
-            signals = [...newSignals, ...signals].slice(0, 10); // Keep last 10 signals
+            signals = [...newSignals, ...signals].slice(0, 10);
         }
         
-        statusText.textContent = '🟢 ライブ';
-        updateDisplay();
+        statusText.textContent = '🟢 ライブ（スキャルピング監視中）';
+        updateScalpingDisplay();
     } catch (error) {
-        console.error('Update error:', error);
+        console.error('Scalping update error:', error);
         statusText.textContent = '🔴 エラー';
+    }
+}
+
+// Update 4H environment data (slow update)
+function updateEnvironmentData() {
+    try {
+        envUpdateCounter++;
+        
+        // 4H uses less volatile data
+        const prices = generateMockPrices(CONFIG.VOLATILITY_FACTOR * 0.5);
+        envStrengths = calculateStrengths(prices);
+        
+        updateEnvironmentDisplay();
+    } catch (error) {
+        console.error('Environment update error:', error);
     }
 }
 
@@ -295,21 +323,23 @@ function start() {
     statusText.textContent = '🟡 起動中...';
     signals = [];
     updateCounter = 0;
+    envUpdateCounter = 0;
     
-    // Reset histories
     CURRENCIES.forEach(curr => {
-        strengthHistory[curr] = [];
+        scalpHistory[curr] = [];
     });
     
-    // Rapid initial updates to build history
+    // Initial rapid updates
     for (let i = 0; i < 5; i++) {
-        updateData();
+        updateScalpingData();
     }
+    updateEnvironmentData();
     
-    // Set interval for updates
-    window.dataInterval = setInterval(updateData, CONFIG.API_INTERVAL);
+    // Set intervals
+    window.scalpInterval = setInterval(updateScalpingData, CONFIG.SCALP_UPDATE_INTERVAL);
+    window.envInterval = setInterval(updateEnvironmentData, CONFIG.ENV_UPDATE_INTERVAL);
     
-    statusText.textContent = '🟢 ライブ';
+    statusText.textContent = '🟢 ライブ（スキャルピング監視中）';
 }
 
 // Stop monitoring
@@ -321,14 +351,13 @@ function stop() {
     stopBtn.disabled = true;
     statusText.textContent = '🔴 停止';
     
-    if (window.dataInterval) {
-        clearInterval(window.dataInterval);
-    }
+    if (window.scalpInterval) clearInterval(window.scalpInterval);
+    if (window.envInterval) clearInterval(window.envInterval);
 }
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     statusText.textContent = '準備完了';
-    document.getElementById('configDivergence').textContent = CONFIG.MIN_DIVERGENCE + 'ポイント以上';
-    document.getElementById('configSpeed').textContent = CONFIG.MIN_SPEED + 'ポイント/tick以上';
+    updateConfigDisplay();
+    environmentContainer.innerHTML = '<p class="no-data">環境分析準備中...</p>';
 });
