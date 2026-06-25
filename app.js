@@ -1,23 +1,14 @@
-// Currency Strength Scalper - Main Logic
+// Currency Strength Scalper - Main Logic (Improved)
 // Configuration
 const CONFIG = {
-    MIN_DIVERGENCE: 8, // Minimum 8 points divergence
-    MIN_SPEED: 1.5, // Minimum 1.5 points/tick reduction speed
-    API_INTERVAL: 5000, // Update every 5 seconds
-    HISTORY_SIZE: 20, // Keep last 20 data points
+    MIN_DIVERGENCE: 3,      // Minimum 3 points divergence (lowered for better sensitivity)
+    MIN_SPEED: 0.5,         // Minimum 0.5 points/tick reduction speed (lowered)
+    API_INTERVAL: 2000,     // Update every 2 seconds (faster)
+    HISTORY_SIZE: 30,       // Keep last 30 data points
+    VOLATILITY_FACTOR: 1.5, // Increase volatility for better signal generation
 };
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD', 'NZD', 'CAD'];
-const BASE_PAIRS = {
-    'USD': ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'NZDUSD', 'USDCAD'],
-    'EUR': ['EURUSD', 'EURGBP', 'EURJPY', 'EURCHF', 'EURAUD', 'EURNZD', 'EURCAD'],
-    'GBP': ['GBPUSD', 'EURGBP', 'GBPJPY', 'GBPCHF', 'GBPAUD', 'GBPNZD', 'GBPCAD'],
-    'JPY': ['USDJPY', 'EURJPY', 'GBPJPY', 'CHFJPY', 'AUDJPY', 'NZDJPY', 'CADJPY'],
-    'CHF': ['USDCHF', 'EURCHF', 'GBPCHF', 'CHFJPY', 'AUDCHF', 'NZDCHF', 'CADCHF'],
-    'AUD': ['AUDUSD', 'EURAUD', 'GBPAUD', 'AUDJPY', 'AUDCHF', 'AUDNZD', 'AUDCAD'],
-    'NZD': ['NZDUSD', 'EURNZD', 'GBPNZD', 'NZDJPY', 'NZDCHF', 'AUDNZD', 'NZDCAD'],
-    'CAD': ['USDCAD', 'EURCAD', 'GBPCAD', 'CADJPY', 'CADCHF', 'AUDCAD', 'NZDCAD']
-};
 
 // Global state
 let isRunning = false;
@@ -25,6 +16,7 @@ let currencyStrengths = {};
 let strengthHistory = {};
 let signals = [];
 let chart = null;
+let updateCounter = 0;
 
 // Initialize strength history
 CURRENCIES.forEach(curr => {
@@ -43,47 +35,58 @@ const signalContainer = document.getElementById('signalContainer');
 startBtn.addEventListener('click', start);
 stopBtn.addEventListener('click', stop);
 
-// Mock data generator (replace with real API)
+// Enhanced mock data generator with realistic volatility
 function generateMockPrices() {
     const prices = {};
-    CURRENCIES.forEach(curr => {
-        CURRENCIES.forEach(other => {
-            if (curr !== other) {
-                const pair = curr + other;
-                prices[pair] = 100 + Math.random() * 0.1 - 0.05;
+    
+    CURRENCIES.forEach(curr1 => {
+        CURRENCIES.forEach(curr2 => {
+            if (curr1 !== curr2) {
+                const pair = curr1 + curr2;
+                // Increased volatility for better signal generation
+                const volatility = (Math.random() - 0.5) * CONFIG.VOLATILITY_FACTOR;
+                prices[pair] = 100 + volatility;
             }
         });
     });
+    
     return prices;
 }
 
-// Calculate currency strength using multiple pairs
+// Improved currency strength calculation
 function calculateStrengths(prices) {
     const strengths = {};
     
     CURRENCIES.forEach(curr => {
-        let score = 0;
+        let totalScore = 0;
         let count = 0;
         
-        BASE_PAIRS[curr].forEach(pair => {
-            if (prices[pair]) {
-                // Simplified calculation: check if currency is strong in the pair
-                if (pair.startsWith(curr)) {
-                    score += prices[pair] > 100 ? 1 : -1;
-                } else {
-                    score += prices[pair] < 100 ? 1 : -1;
+        CURRENCIES.forEach(other => {
+            if (curr !== other) {
+                const pair1 = curr + other;
+                const pair2 = other + curr;
+                
+                // Use the pair that exists in prices
+                const price = prices[pair1] || prices[pair2];
+                
+                if (price !== undefined) {
+                    // If curr is first in pair, price > 100 means strong
+                    // If curr is second in pair, price < 100 means strong
+                    const isStrong = prices[pair1] ? (price > 100) : (price < 100);
+                    totalScore += isStrong ? 1 : -1;
+                    count++;
                 }
-                count++;
             }
         });
         
-        strengths[curr] = count > 0 ? (score / count) * 10 : 0;
+        // Scale to -15 to +15 range for visualization
+        strengths[curr] = count > 0 ? (totalScore / count) * 10 : 0;
     });
     
     return strengths;
 }
 
-// Detect signals based on divergence and speed
+// Improved signal detection
 function detectSignals(newStrengths) {
     const detectedSignals = [];
     
@@ -96,14 +99,15 @@ function detectSignals(newStrengths) {
                 if (divergence >= CONFIG.MIN_DIVERGENCE) {
                     let prevDivergence = 0;
                     
+                    // Get previous divergence from history
                     if (strengthHistory[curr1].length > 0 && strengthHistory[curr2].length > 0) {
                         const prevStr1 = strengthHistory[curr1][strengthHistory[curr1].length - 1];
                         const prevStr2 = strengthHistory[curr2][strengthHistory[curr2].length - 1];
                         prevDivergence = Math.abs(prevStr1 - prevStr2);
                     }
                     
-                    // Check if divergence is contracting (signals start of mean reversion)
-                    if (prevDivergence > 0 && prevDivergence > divergence) {
+                    // Check if divergence is contracting (mean reversion signal)
+                    if (prevDivergence > divergence) {
                         const speed = prevDivergence - divergence;
                         
                         if (speed >= CONFIG.MIN_SPEED) {
@@ -128,13 +132,13 @@ function detectSignals(newStrengths) {
     return detectedSignals;
 }
 
-// Update display
+// Update display with real-time info
 function updateDisplay() {
     const now = new Date();
     lastUpdate.textContent = `最終更新: ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
     
     if (signals.length === 0) {
-        signalContainer.innerHTML = '<p class="no-signal">シグナル待機中...</p>';
+        signalContainer.innerHTML = '<p class="no-signal">シグナル監視中... (更新回数: ' + updateCounter + ')</p>';
     } else {
         signalContainer.innerHTML = signals.map((signal, index) => `
             <div class="signal-card ${signal.direction}">
@@ -157,12 +161,16 @@ function updateDisplay() {
         `).join('');
     }
     
+    // Update config display
+    document.getElementById('configDivergence').textContent = CONFIG.MIN_DIVERGENCE + 'ポイント以上';
+    document.getElementById('configSpeed').textContent = CONFIG.MIN_SPEED + 'ポイント/tick以上';
+    
     updateChart();
 }
 
 function getSpeedLevel(speed) {
-    if (speed >= 3) return 'high';
-    if (speed >= 2) return 'medium';
+    if (speed >= 1.5) return 'high';
+    if (speed >= 0.8) return 'medium';
     return 'low';
 }
 
@@ -172,15 +180,16 @@ function updateChart() {
     if (!ctx) return;
     
     const labels = strengthHistory[CURRENCIES[0]].map((_, i) => i + 1);
-    const datasets = CURRENCIES.map((curr, index) => ({
+    const datasets = CURRENCIES.map((curr) => ({
         label: curr,
         data: strengthHistory[curr],
         borderColor: getColorForCurrency(curr),
         backgroundColor: `${getColorForCurrency(curr)}20`,
-        tension: 0.4,
+        tension: 0.3,
         fill: false,
         pointRadius: 3,
-        pointBackgroundColor: getColorForCurrency(curr)
+        pointBackgroundColor: getColorForCurrency(curr),
+        borderWidth: 2
     }));
     
     if (chart) {
@@ -196,6 +205,9 @@ function updateChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            animation: {
+                duration: 0
+            },
             plugins: {
                 legend: {
                     position: 'top',
@@ -242,7 +254,9 @@ function getColorForCurrency(curr) {
 // Main update loop
 async function updateData() {
     try {
-        // Generate mock prices (replace with API call)
+        updateCounter++;
+        
+        // Generate prices with better volatility
         const prices = generateMockPrices();
         
         // Calculate new strengths
@@ -280,12 +294,22 @@ function start() {
     stopBtn.disabled = false;
     statusText.textContent = '🟡 起動中...';
     signals = [];
+    updateCounter = 0;
     
-    // Initial update
-    updateData();
+    // Reset histories
+    CURRENCIES.forEach(curr => {
+        strengthHistory[curr] = [];
+    });
+    
+    // Rapid initial updates to build history
+    for (let i = 0; i < 5; i++) {
+        updateData();
+    }
     
     // Set interval for updates
     window.dataInterval = setInterval(updateData, CONFIG.API_INTERVAL);
+    
+    statusText.textContent = '🟢 ライブ';
 }
 
 // Stop monitoring
@@ -305,4 +329,6 @@ function stop() {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     statusText.textContent = '準備完了';
+    document.getElementById('configDivergence').textContent = CONFIG.MIN_DIVERGENCE + 'ポイント以上';
+    document.getElementById('configSpeed').textContent = CONFIG.MIN_SPEED + 'ポイント/tick以上';
 });
