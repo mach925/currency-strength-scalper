@@ -108,6 +108,72 @@ header p {
     font-size: 0.9em;
 }
 
+/* 4時間足環境セクション */
+.environment-section {
+    padding: 20px 30px;
+    background: #f0f7ff;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.environment-section h2 {
+    color: #667eea;
+    margin-bottom: 15px;
+    font-size: 1.3em;
+}
+
+.environment-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+
+.environment-item {
+    padding: 10px 15px;
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.environment-currency {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.environment-strength {
+    font-size: 0.9em;
+    color: #666;
+}
+
+.environment-item.strong {
+    border-color: #28a745;
+    background: #f0fff4;
+}
+
+.environment-item.weak {
+    border-color: #dc3545;
+    background: #fff5f5;
+}
+
+.environment-item.strong .environment-strength {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.environment-item.weak .environment-strength {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.no-data {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 20px;
+    color: #999;
+}
+
 .indicators {
     padding: 20px 30px;
     background: #fff;
@@ -297,5 +363,9 @@ header p {
     .info-box ul {
         flex-direction: column;
         gap: 10px;
+    }
+
+    .environment-container {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
